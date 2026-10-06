@@ -1,0 +1,39 @@
+name: tag
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  autotag:
+    name: main 合并自动打 tag（v0.1.x 起）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 递增 v0.1.x 并推送 tag
+        run: |
+          set -euo pipefail
+          # 纪律：有业务 Go 源码才发布版本（骨架期不打 tag；首个 tag v0.1.0 随 S1 首包落地）
+          if [ -z "$(git ls-files '*.go' | grep -v '^tools/' || true)" ]; then
+            echo "尚无业务 Go 源码：跳过打 tag（v0.1.0 将随 S1 首包落地）"
+            exit 0
+          fi
+          # HEAD 已打 tag（如手动发布）则不重复
+          if git describe --exact-match --tags HEAD >/dev/null 2>&1; then
+            echo "HEAD 已有 tag，跳过"
+            exit 0
+          fi
+          latest=$(git tag --list 'v0.1.*' --sort=-v:refname | head -n1 || true)
+          if [ -z "$latest" ]; then
+            next="v0.1.0"
+          else
+            next="v0.1.$(( ${latest#v0.1.} + 1 ))"
+          fi
+          git tag "$next"
+          git push origin "$next"
+          echo "已发布 $next"

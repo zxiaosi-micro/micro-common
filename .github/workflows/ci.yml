@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: build + vet + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - name: build / vet / test（骨架期无源码则占位通过）
+        run: |
+          set -euo pipefail
+          if [ -z "$(git ls-files '*.go')" ]; then
+            echo "尚无 Go 源码（仅骨架）：占位通过，S1 落地后自动生效"
+            exit 0
+          fi
+          go build ./...
+          go vet ./...
+          go test ./...
+
+  lint:
+    name: golangci-lint（v2）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - name: golangci-lint（骨架期无源码则占位通过）
+        run: |
+          set -euo pipefail
+          if [ -z "$(git ls-files '*.go')" ]; then
+            echo "尚无 Go 源码（仅骨架）：占位通过，S1 落地后自动生效"
+            exit 0
+          fi
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" v2.14.0
+          golangci-lint run
