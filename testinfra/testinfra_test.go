@@ -2,6 +2,7 @@ package testinfra
 
 import (
 	"testing"
+	"time"
 )
 
 func TestEnvLevelMySQL(t *testing.T) {
@@ -75,6 +76,16 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// TestResolveRealEtcd etcd 解析冒烟(集成作业经 testcontainers;为 S3 identity
+// 的 snowflake/sessionx etcd 依赖提前验证解析路径)。
+func TestResolveRealEtcd(t *testing.T) {
+	eps, res := Etcd(t)
+	t.Logf("etcd 解析级别=%s endpoints=%v", res.Level, eps)
+	if !dialAlive(eps[0], time.Second) {
+		t.Fatal("etcd 端口未就绪")
+	}
 }
 
 // TestResolveRealTDengine TDengine 容器作业冒烟(S1-11:CI 强制全量口径)。

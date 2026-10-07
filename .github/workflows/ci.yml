@@ -46,11 +46,6 @@ jobs:
         options: >-
           --health-cmd="redis-cli ping"
           --health-interval=10s --health-timeout=5s --health-retries=10
-      etcd:
-        image: gcr.io/etcd-development/etcd:v3.5.14
-        cmd: ["etcd", "--listen-client-urls=http://0.0.0.0:2379", "--advertise-client-urls=http://0.0.0.0:2379"]
-        ports:
-          - 22379:2379
       tdengine:
         image: tdengine/tdengine:3.3.2.0
         env:
@@ -58,10 +53,11 @@ jobs:
         ports:
           - 26041:6041
     env:
-      # testinfra 一级解析(CI 显式注入;Kafka 走 testcontainers,runner 自带 docker)
+      # testinfra 一级解析(CI 显式注入);
+      # etcd 需要 cmd 参数才能对外监听,service 容器不支持 cmd 键 → etcd/Kafka 走
+      # testcontainers 三级解析(runner 自带 docker,testinfra 容器共享,各起一个)
       MICRO_TEST_MYSQL_DSN: "root:microtest@tcp(127.0.0.1:23306)/test?charset=utf8mb4&parseTime=true&loc=Local"
       MICRO_TEST_REDIS_ADDR: "127.0.0.1:26379"
-      MICRO_TEST_ETCD_ENDPOINTS: "127.0.0.1:22379"
       MICRO_TEST_TDENGINE_ADDR: "127.0.0.1:26041"
     steps:
       - uses: actions/checkout@v4
