@@ -233,10 +233,15 @@ func (s *Subscriber) moveToDead(ctx context.Context, env *Envelope, count int, e
 // recordMalformed 畸形消息:记轨迹进 dead 表后 ack。
 func (s *Subscriber) recordMalformed(raw string, cause error) {
 	ctx := context.WithoutCancel(context.Background())
+	// payload 列为 JSON 类型:畸形原文必须包装成 JSON 字符串才能入库留痕
+	rawJSON, merr := json.Marshal(raw)
+	if merr != nil {
+		rawJSON = []byte(`""`)
+	}
 	_, err := s.conn.ExecCtx(ctx,
 		`INSERT INTO event_dead (source, event_id, consumer_group, payload, last_error)
 		 VALUES (?, ?, ?, ?, ?)`,
-		"malformed", NewEventID(), s.group, raw, truncateError(cause))
+		"malformed", NewEventID(), s.group, string(rawJSON), truncateError(cause))
 	if err != nil {
 		logx.Errorf("eventbus: 畸形消息留痕失败(消息已丢弃): %v, raw=%.256s", err, raw)
 		return

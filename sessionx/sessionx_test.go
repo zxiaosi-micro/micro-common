@@ -191,13 +191,14 @@ func TestLoginFailLockout(t *testing.T) {
 func TestRevokeClientAndAll(t *testing.T) {
 	s := newStore(t)
 	ctx := context.Background()
+	// 同端互斥:同 client 只保留最新会话,跨 client 共存
 	a, _, _ := s.Create(ctx, 5001, "ADMIN_WEB")
 	b, _, _ := s.Create(ctx, 5001, "OPS_APP")
-	c, _, _ := s.Create(ctx, 5001, "OPS_APP")
+	c, _, _ := s.Create(ctx, 5001, "STATION_MINI")
 
 	n, err := s.RevokeClient(ctx, 5001, "OPS_APP")
-	if err != nil || n != 2 {
-		t.Fatalf("应踢 OPS_APP 2 个会话: %d err=%v", n, err)
+	if err != nil || n != 1 {
+		t.Fatalf("应踢 OPS_APP 1 个会话: %d err=%v", n, err)
 	}
 	if _, err := s.Get(ctx, a.SID); err != nil {
 		t.Fatal("ADMIN_WEB 会话应保留")
@@ -205,9 +206,12 @@ func TestRevokeClientAndAll(t *testing.T) {
 	if _, err := s.Get(ctx, b.SID); !errors.Is(err, ErrSessionNotFound) {
 		t.Fatal("OPS_APP 会话应被踢")
 	}
+	if _, err := s.Get(ctx, c.SID); err != nil {
+		t.Fatal("STATION_MINI 会话应保留")
+	}
 	n, err = s.RevokeAll(ctx, 5001)
-	if err != nil || n != 1 {
-		t.Fatalf("全端注销应剩 1 个: %d err=%v", n, err)
+	if err != nil || n != 2 {
+		t.Fatalf("全端注销应注销 2 个: %d err=%v", n, err)
 	}
 	if _, err := s.Get(ctx, c.SID); !errors.Is(err, ErrSessionNotFound) {
 		t.Fatal("全端注销后不应有存活会话")

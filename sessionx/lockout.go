@@ -20,10 +20,10 @@ import (
 const lockScript = `
 local n = redis.call('INCR', KEYS[1])
 if n == 1 then
-	redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+	redis.call('PEXPIRE', KEYS[1], tonumber(ARGV[2]))
 end
 if n >= tonumber(ARGV[1]) then
-	redis.call('SET', KEYS[2], '1', 'EX', tonumber(ARGV[3]))
+	redis.call('SET', KEYS[2], '1', 'PX', tonumber(ARGV[3]))
 	redis.call('DEL', KEYS[1])
 	return {'1', '0'}
 end
@@ -51,7 +51,7 @@ func (s *Store) RecordLoginFail(ctx context.Context, ident string, maxFails int,
 	}
 	res, err := s.rdb.Eval(ctx, lockScript,
 		[]string{s.key("login_fail:", ident), s.key("locked:", ident)},
-		maxFails, int(failWindow/time.Second), int(lockDur/time.Second)).Result()
+		maxFails, int(failWindow/time.Millisecond), int(lockDur/time.Millisecond)).Result()
 	if err != nil {
 		return LockResult{}, fmt.Errorf("sessionx: 记录登录失败失败: %w", err)
 	}
@@ -68,8 +68,9 @@ type LockedState struct {
 }
 
 // CheckLocked 查锁定状态(登录入口与 BFF 提示倒计时用)。
+// 用 PTTL(毫秒精度):TTL 秒级精度会把亚秒级 TTL 读成 0,误判为未锁。
 func (s *Store) CheckLocked(ctx context.Context, ident string) (LockedState, error) {
-	ttl, err := s.rdb.TTL(ctx, s.key("locked:", ident)).Result()
+	ttl, err := s.rdb.PTTL(ctx, s.key("locked:", ident)).Result()
 	if err != nil {
 		return LockedState{}, fmt.Errorf("sessionx: 查锁定状态失败: %w", err)
 	}

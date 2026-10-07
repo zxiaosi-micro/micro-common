@@ -233,7 +233,7 @@ func TestConsumeFailureRedelivery(t *testing.T) {
 
 	// 时间推进到重投时刻 → Relay 重投 → 消费侧成功 → 重投行清理
 	f.forceRetryDue(t)
-	requeued, _, err := f.relay.DispatchOnce(t.Context())
+	_, requeued, err := f.relay.DispatchOnce(t.Context())
 	if err != nil || requeued != 1 {
 		t.Fatalf("应重投 1 条: requeued=%d err=%v", requeued, err)
 	}
@@ -251,12 +251,12 @@ func TestConsumeFailureRedelivery(t *testing.T) {
 
 // 验收场景 4:dead 表——重投达上限转死信 + 告警钩子。
 func TestDeadLetterAfterMaxRetry(t *testing.T) {
-	f := newBusFixture(t, 2) // 测试用小上限:2 次重投即死信
+	f := newBusFixture(t, 3) // 测试用小上限:3 次重投即死信
 	var deadEvents []DeadEvent
 	var mu sync.Mutex
 	sub, err := NewSubscriber(f.conn, func(ctx context.Context, env *Envelope) error {
 		return errors.New("永久失败")
-	}, SubConf{Group: "group-dead", MaxRetry: 2},
+	}, SubConf{Group: "group-dead", MaxRetry: 3},
 		WithConsumeDeadHook(func(ev DeadEvent) {
 			mu.Lock()
 			deadEvents = append(deadEvents, ev)
@@ -273,7 +273,7 @@ func TestDeadLetterAfterMaxRetry(t *testing.T) {
 	_ = sub.Handle("k2", f.sender.all()[0].value) // 失败 2 → retry_count=2
 	f.forceRetryDue(t)
 	_, _, _ = f.relay.DispatchOnce(t.Context())
-	_ = sub.Handle("k3", f.sender.all()[1].value) // 失败 3 ≥ max → dead
+	_ = sub.Handle("k3", f.sender.all()[1].value) // 失败 3 ≥ max(3) → dead
 
 	if n := f.countRows(t, "SELECT COUNT(*) AS c FROM event_dead WHERE event_id='evt-dead-1' AND source='consume'"); n != 1 {
 		t.Fatalf("dead 表应有 1 条: %d", n)
