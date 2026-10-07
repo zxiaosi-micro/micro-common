@@ -206,7 +206,13 @@ func (m *Middleware) authenticate(r *http.Request) (*jwtauth.Claims, error) {
 	if token == "" {
 		return nil, errcode.ErrTokenInvalid
 	}
-	return m.verifier.Verify(token)
+	claims, err := m.verifier.Verify(token)
+	if err != nil {
+		// 验签失败(过期/篡改/kid 不在集合)→ 10401 映射 401,触发前端单飞刷新;
+		// 裸 jwtauth 错误会落到 500 兜底,前端无法分流。
+		return nil, errcode.ErrTokenInvalid.WithCause(err)
+	}
+	return claims, nil
 }
 
 func (m *Middleware) checkSession(ctx context.Context, sid, path string) error {
