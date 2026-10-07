@@ -65,7 +65,18 @@ jobs:
         with:
           go-version: '1.26'
       - name: 全量 go test（含 eventbus/sessionx/tenantx/snowflake 集成）
-        run: go test ./...
+        run: |
+          set -o pipefail
+          go test ./... 2>&1 | tee /tmp/test.log
+      - name: 失败摘要转注解（CI 排障用）
+        if: failure()
+        run: |
+          grep -nE "^(--- FAIL|FAIL|panic:|ok .*FAIL)" /tmp/test.log | head -30 | while IFS= read -r line; do
+            echo "::error::${line:0:180}"
+          done
+          grep -B2 -A12 "^--- FAIL" /tmp/test.log | head -80 | while IFS= read -r line; do
+            echo "::error::${line:0:180}"
+          done
       # S1-11:CI 配 TDengine 容器作业强制全量——service 容器 + 全量 go test 即该口径
       # 在公共库的落地;业务服务仓沿用同一作业模式(mysql/redis/etcd/tdengine)
 
