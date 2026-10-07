@@ -1,0 +1,25 @@
+# golangci-lint v2 配置(CI 同款,make lint / S0-02)
+version: "2"
+
+linters:
+  # standard = errcheck / govet / ineffassign / staticcheck / unused
+  default: standard
+  enable:
+    - misspell
+    - unconvert
+  settings:
+    errcheck:
+      # 公共库中"尽力而为"的清理调用(关闭连接/删除临时键/日志性写回)显式豁免
+      exclude-functions:
+        - (*github.com/redis/go-redis/v9.Client).Close
+        - (*github.com/redis/go-redis/v9.Pipeline).Exec
+        - (net.Conn).Close
+        - (io.Closer).Close
+    staticcheck:
+      # SA5008:go-zero 配置标签(json:",optional"/options=)为框架扩展,非标准 json tag
+      # QF1008:go-zero 配置结构体惯用嵌入字段显式书写,保持可读
+      checks: ["all", "-SA5008", "-QF1008"]
+
+formatters:
+  enable:
+    - gofmt

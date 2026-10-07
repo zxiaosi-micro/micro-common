@@ -10,23 +10,68 @@ permissions:
 
 jobs:
   test:
-    name: build + vet + test
+    name: build + vet + test（-short 单测作业）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-      - name: build / vet / test（骨架期无源码则占位通过）
+      - name: build / vet / test
         run: |
           set -euo pipefail
-          if [ -z "$(git ls-files '*.go')" ]; then
-            echo "尚无 Go 源码（仅骨架）：占位通过，S1 落地后自动生效"
-            exit 0
-          fi
           go build ./...
           go vet ./...
-          go test ./...
+          # -short:testinfra 三级解析跳过容器级,只跑纯单测(容器依赖由 integration 作业全量覆盖)
+          go test -short ./...
+
+  integration:
+    name: integration（中间件容器作业，全量测试）
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: microtest
+          MYSQL_DATABASE: test
+        ports:
+          - 23306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pmicrotest"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7
+        ports:
+          - 26379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      etcd:
+        image: gcr.io/etcd-development/etcd:v3.5.14
+        cmd: ["etcd", "--listen-client-urls=http://0.0.0.0:2379", "--advertise-client-urls=http://0.0.0.0:2379"]
+        ports:
+          - 22379:2379
+      tdengine:
+        image: tdengine/tdengine:3.3.2.0
+        env:
+          TAOS_FQDN: localhost
+        ports:
+          - 26041:6041
+    env:
+      # testinfra 一级解析(CI 显式注入;Kafka 走 testcontainers,runner 自带 docker)
+      MICRO_TEST_MYSQL_DSN: "root:microtest@tcp(127.0.0.1:23306)/test?charset=utf8mb4&parseTime=true&loc=Local"
+      MICRO_TEST_REDIS_ADDR: "127.0.0.1:26379"
+      MICRO_TEST_ETCD_ENDPOINTS: "127.0.0.1:22379"
+      MICRO_TEST_TDENGINE_ADDR: "127.0.0.1:26041"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - name: 全量 go test（含 eventbus/sessionx/tenantx/snowflake 集成）
+        run: go test ./...
+      # S1-11:CI 配 TDengine 容器作业强制全量——service 容器 + 全量 go test 即该口径
+      # 在公共库的落地;业务服务仓沿用同一作业模式(mysql/redis/etcd/tdengine)
 
   lint:
     name: golangci-lint（v2）
@@ -36,13 +81,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-      - name: golangci-lint（骨架期无源码则占位通过）
+      - name: golangci-lint
         run: |
           set -euo pipefail
-          if [ -z "$(git ls-files '*.go')" ]; then
-            echo "尚无 Go 源码（仅骨架）：占位通过，S1 落地后自动生效"
-            exit 0
-          fi
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
             | sh -s -- -b "$(go env GOPATH)/bin" v2.14.0
           golangci-lint run

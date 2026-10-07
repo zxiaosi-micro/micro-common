@@ -2,6 +2,22 @@
 
 go-zero 内置能力之外的**补集包**（go-zero 已内置的熔断/限流/单飞/本地缓存等不重复造），被全部 18 个后端服务依赖。**唯一 semver 版本化发布的仓库**——合并 main 自动打 tag（v0.1.x 递增）。
 
+> module 路径：`github.com/zxiaosi-micro/micro-common`（S1-12 修正：无点号路径无法被代理拉取，服务侧版本引用/tag 发布必须域名型路径；S0 骨架期曾写 `micro-common`）。
+
+## 服务接入要点
+
+```go
+// main 启动固定顺序:
+response.Setup()                                        // ① 全局错误出口+成功信封(先于路由注册)
+authz.New(verifier, sessionStore, authCache, conf)      // ② BFF 挂三层鉴权中间件
+relay.Run(ctx)                                          // ③ eventbus Relay 进 service.ServiceGroup
+```
+
+- 错误码:各服务 `internal/*_err.go` 用 `errcode.New(SegXxx, code, msg)` 集中登记,禁止裸数字
+- 事件:`err := tx func(...){ ...; eventbus.Emit(ctx, session, ...) }`(业务事务内)
+- 会话中心 sessionx 固定 Redis DB4;identity 是唯一读写方
+- 测试:`go test -short ./...`(纯单测,快)/ `go test ./...`(全量,含容器集成,三级解析自动选择环境)
+
 包清单（11 个，自 S1 起逐个落地，接口口径见《02-技术文档》§8）：
 
 | 包 | 一句话职责 |
