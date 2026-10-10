@@ -8,6 +8,7 @@ const (
 	TopicOrderPaid           = "order_paid"
 	TopicOrderCancelled      = "order_cancelled"
 	TopicOrderPayTimeout     = "order_pay_timeout"
+	TopicStockIn             = "stock_in"
 	TopicStockOut            = "stock_out"
 	TopicStockLow            = "stock_low"
 	TopicPaymentRefunded     = "payment_refunded"
@@ -28,4 +29,5 @@ const (
 	TopicCmdFailed       = "cmd_failed"
 	TopicOtaPaused       = "ota_paused"
 	TopicDeviceAnomaly   = "device_anomaly"
+	TopicStationCreated  = "station_created"
 )

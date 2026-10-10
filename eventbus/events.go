@@ -16,7 +16,8 @@ const (
 	TypeOrderCancelled  = "order.cancelled"
 	TypeOrderPayTimeout = "order.pay_timeout"
 
-	// —— 库存域（inventory 发出，order/ops 消费）——
+	// —— 库存域（inventory 发出，order/ops/device 消费）——
+	TypeStockIn  = "stock.in"
 	TypeStockOut = "stock.out"
 	TypeStockLow = "stock.low"
 
@@ -39,4 +40,7 @@ const (
 	TypeCmdFailed       = "cmd.failed"
 	TypeOtaPaused       = "ota.paused"
 	TypeDeviceAnomaly   = "device.anomaly"
+
+	// —— 场站域（station 发出，S6-02；ops 消费建巡检计划）——
+	TypeStationCreated = "station.created"
 )
