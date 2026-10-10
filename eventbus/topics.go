@@ -30,4 +30,7 @@ const (
 	TopicOtaPaused       = "ota_paused"
 	TopicDeviceAnomaly   = "device_anomaly"
 	TopicStationCreated  = "station_created"
+
+	// —— 运维域（S7-01 起使用）——
+	TopicAlertCreated = "alert_created"
 )

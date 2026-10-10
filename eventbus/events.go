@@ -43,4 +43,7 @@ const (
 
 	// —— 场站域（station 发出，S6-02；ops 消费建巡检计划）——
 	TypeStationCreated = "station.created"
+
+	// —— 运维域（ops 发出，S7-01；告警闭环/聚合通知）——
+	TypeAlertCreated = "alert.created"
 )
