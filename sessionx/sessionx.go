@@ -51,21 +51,21 @@ var (
 
 // Conf 会话中心配置(由 identity 服务 yaml 注入)。
 type Conf struct {
-	Addr       string        `json:",default=127.0.0.1:26379"`
-	Password   string        `json:",optional"`
-	DB         int           `json:",default=4"` // 会话中心固定 DB4(02 §6.3)
-	SessionTTL time.Duration `json:",default=604800s"`
-	RefreshTTL time.Duration `json:",default=604800s"`
-	StepUpTTL  time.Duration `json:",default=300s"`
-	Prefix     string        `json:",optional"` // 键前缀(多环境隔离用)
+	Addr       string        `json:",default=127.0.0.1:26379"` // Redis 地址
+	Password   string        `json:",optional"`                // Redis 密码(空=无认证)
+	DB         int           `json:",default=4"`               // 会话中心固定 DB4(02 §6.3)
+	SessionTTL time.Duration `json:",default=604800s"`         // 会话(access token)有效期,默认 7 天
+	RefreshTTL time.Duration `json:",default=604800s"`         // refresh token 有效期,默认 7 天
+	StepUpTTL  time.Duration `json:",default=300s"`            // 敏感操作二次认证有效期,默认 5 分钟
+	Prefix     string        `json:",optional"`                // 键前缀(多环境隔离用)
 }
 
 // Session 会话快照。
 type Session struct {
-	SID       string
-	UID       int64
-	Client    string
-	CreatedAt time.Time
+	SID       string    // 会话 ID(全端注销按 UID 维度,SID 用于单会话定位)
+	UID       int64     // 用户 ID
+	Client    string    // 客户端枚举(ctxkit.Client*,同端互斥/跨端共存)
+	CreatedAt time.Time // 会话创建时间
 }
 
 // Store 会话中心存储。

@@ -19,10 +19,10 @@ var ErrAuthCacheMiss = errors.New("sessionx: auth_cache 无记录")
 
 // AuthSnapshot uid 维度的权限快照。
 type AuthSnapshot struct {
-	Roles     []string `json:"roles"`
-	Perms     []string `json:"perms"`
-	DataScope string   `json:"data_scope"`
-	TenantID  int64    `json:"tenant_id"`
+	Roles     []string `json:"roles"`      // 角色编码列表
+	Perms     []string `json:"perms"`      // 权限码列表(RBAC 判定数据源)
+	DataScope string   `json:"data_scope"` // 数据范围(ALL/SELF 等,行级过滤语义)
+	TenantID  int64    `json:"tenant_id"`  // 归属租户(0=平台账号)
 }
 
 // HasPerm 是否持有权限码(RBAC 判定)。

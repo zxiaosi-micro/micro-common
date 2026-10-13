@@ -25,9 +25,9 @@ const CodeOK int64 = 0
 
 // Body 统一响应信封。
 type Body struct {
-	Code int64  `json:"code"`
-	Msg  string `json:"msg"`
-	Data any    `json:"data,omitempty"`
+	Code int64  `json:"code"`           // 业务码（0=成功，非 0 = errcode 业务码）
+	Msg  string `json:"msg"`            // 消息（成功固定 "ok"）
+	Data any    `json:"data,omitempty"` // 业务数据（失败时缺省）
 }
 
 // Success 构造成功信封(0/ok/data)。

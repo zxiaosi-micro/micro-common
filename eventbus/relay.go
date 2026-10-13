@@ -19,14 +19,14 @@ type Sender interface {
 
 // DeadEvent 死信条目(onDead 告警钩子的入参)。
 type DeadEvent struct {
-	Source     string
-	EventID    string
-	Group      string
-	EventType  string
-	Topic      string
-	TenantID   int64
-	RetryCount int
-	LastError  string
+	Source     string // 死信来源："outbox"=投递侧 / 消费组名=消费侧
+	EventID    string // 事件全局唯一 ID
+	Group      string // 消费组（投递侧死信为空串）
+	EventType  string // 事件类型
+	Topic      string // 目标 topic
+	TenantID   int64  // 事件归属租户
+	RetryCount int    // 已重试次数（达 MaxRetry 才入死信）
+	LastError  string // 最后一次失败原因（截断 500 字符）
 }
 
 // RelayConf Relay 配置。
@@ -140,16 +140,17 @@ func (r *Relay) dispatchOutbox(ctx context.Context) (int, error) {
 	return delivered, err
 }
 
+// outboxRow event_outbox 行映射（Relay 投递侧扫描结果）。
 type outboxRow struct {
-	ID           int64  `db:"id"`
-	EventID      string `db:"event_id"`
-	EventType    string `db:"event_type"`
-	Topic        string `db:"topic"`
-	PartitionKey string `db:"partition_key"`
-	TenantID     int64  `db:"tenant_id"`
-	TraceID      string `db:"trace_id"`
-	Payload      string `db:"payload"`
-	RetryCount   int    `db:"retry_count"`
+	ID           int64  `db:"id"`            // 行主键（状态回写定位）
+	EventID      string `db:"event_id"`      // 事件全局唯一 ID
+	EventType    string `db:"event_type"`    // 事件类型
+	Topic        string `db:"topic"`         // 目标 topic
+	PartitionKey string `db:"partition_key"` // 分片键（同聚合同 key 保序）
+	TenantID     int64  `db:"tenant_id"`     // 事件归属租户
+	TraceID      string `db:"trace_id"`      // 全链路追踪 ID
+	Payload      string `db:"payload"`       // 完整信封 JSON
+	RetryCount   int    `db:"retry_count"`   // 已重试次数（退避与死信判定依据）
 }
 
 // marshalEnvelope 从 outbox 行还原信封 JSON(payload 列即信封全文)。
@@ -227,16 +228,17 @@ func (r *Relay) dispatchRetries(ctx context.Context) (int, error) {
 	return requeued, err
 }
 
+// retryRow event_retry 行映射（Relay 重投侧扫描结果）。
 type retryRow struct {
-	ID            int64  `db:"id"`
-	EventID       string `db:"event_id"`
-	ConsumerGroup string `db:"consumer_group"`
-	EventType     string `db:"event_type"`
-	Topic         string `db:"topic"`
-	PartitionKey  string `db:"partition_key"`
-	TenantID      int64  `db:"tenant_id"`
-	Payload       string `db:"payload"`
-	RetryCount    int    `db:"retry_count"`
+	ID            int64  `db:"id"`             // 行主键（成功后由消费侧删除）
+	EventID       string `db:"event_id"`       // 事件全局唯一 ID
+	ConsumerGroup string `db:"consumer_group"` // 目标消费组
+	EventType     string `db:"event_type"`     // 事件类型
+	Topic         string `db:"topic"`          // 目标 topic
+	PartitionKey  string `db:"partition_key"`  // 分片键
+	TenantID      int64  `db:"tenant_id"`      // 事件归属租户
+	Payload       string `db:"payload"`        // 完整信封 JSON
+	RetryCount    int    `db:"retry_count"`    // 消费失败累计次数（Send 失败不累计）
 }
 
 // backoffSeconds 退避计划:第 1 次重投 +1m,第 2 次 +5m,其后 +30m(02 §6.6)。
@@ -251,6 +253,7 @@ func backoffSeconds(retryCount int) int {
 	}
 }
 
+// fireDead 死信统一出口：错误日志 + onDead 告警钩子。
 func (r *Relay) fireDead(ev DeadEvent) {
 	logx.Errorf("eventbus: 事件进入死信 source=%s event_id=%s topic=%s retries=%d err=%s",
 		ev.Source, ev.EventID, ev.Topic, ev.RetryCount, ev.LastError)
@@ -259,6 +262,7 @@ func (r *Relay) fireDead(ev DeadEvent) {
 	}
 }
 
+// truncateError 错误文本截断到 500 字符（列宽上限）。
 func truncateError(err error) string {
 	if err == nil {
 		return ""

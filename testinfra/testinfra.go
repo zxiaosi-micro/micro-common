@@ -148,9 +148,9 @@ func pingMySQL(dsn string) bool {
 
 // RedisConn 测试用 Redis 连接参数(DB 划分见 02 §6.3,会话中心固定 DB4)。
 type RedisConn struct {
-	Addr     string
-	Password string
-	DB       int
+	Addr     string // host:port
+	Password string // 密码（空=无认证）
+	DB       int    // 逻辑库编号
 }
 
 // Redis 返回测试用 Redis 连接参数。
@@ -295,8 +295,8 @@ func TDengine(t *testing.T) (TDengineConn, Resource) {
 // TDengineConn TDengine REST 连接参数。
 type TDengineConn struct {
 	Addr string // host:port(6041)
-	User string
-	Pass string
+	User string // Basic 认证用户名
+	Pass string // Basic 认证口令
 }
 
 // BasicAuth REST 请求的 Basic 认证头值(E7:401 易误判空结果,必须带认证)。

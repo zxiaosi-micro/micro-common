@@ -76,9 +76,9 @@ const (
 
 // Registration 一条登记。
 type Registration struct {
-	Table  string `json:"table"`
-	Kind   Kind   `json:"kind"`
-	Reason string `json:"reason"`
+	Table  string `json:"table"`  // 表名
+	Kind   Kind   `json:"kind"`   // scoped=租户表 / exempt=平台共享表
+	Reason string `json:"reason"` // 豁免理由（exempt 必填，tenantaudit 报告展示）
 }
 
 var (

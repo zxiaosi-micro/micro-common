@@ -63,8 +63,8 @@ func (s *Store) RecordLoginFail(ctx context.Context, ident string, maxFails int,
 
 // LockedState 锁定状态:locked=true 时 remaining 为剩余锁定时长。
 type LockedState struct {
-	Locked    bool
-	Remaining time.Duration
+	Locked    bool          // 是否处于锁定中
+	Remaining time.Duration // 剩余锁定时长(未锁定时无意义)
 }
 
 // CheckLocked 查锁定状态(登录入口与 BFF 提示倒计时用)。

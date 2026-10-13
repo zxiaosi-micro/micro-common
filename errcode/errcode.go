@@ -42,8 +42,8 @@ type CodeError struct {
 
 // Body 业务错误对外信封(code+msg,不含内部细节)。
 type Body struct {
-	Code int64  `json:"code"`
-	Msg  string `json:"msg"`
+	Code int64  `json:"code"` // 业务错误码（段+序号，0=成功）
+	Msg  string `json:"msg"`  // 对外消息（不携带 cause 内部细节）
 }
 
 func (e *CodeError) Code() int64 { return e.code }
